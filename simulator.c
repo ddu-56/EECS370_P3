@@ -111,7 +111,6 @@ int main(int argc, char *argv[]) {
     /* Declare state and newState.
        Note these have static lifetime so that instrMem and
        dataMem are not allocated on the stack. */
-
     static stateType state, newState;
 
     if (argc != 2) {
@@ -120,7 +119,13 @@ int main(int argc, char *argv[]) {
     }
 
     readMachineCode(&state, argv[1]);
-
+    state.cycles = 0;
+    state.pc = 0;
+    state.IFID.instr = NOOPINSTR;
+    state.IDEX.instr = NOOPINSTR;
+    state.EXMEM.instr = NOOPINSTR;
+    state.MEMWB.instr = NOOPINSTR;
+    state.WBEND.instr = NOOPINSTR;
     /* ------------ Initialize State ------------ */
 
     /* ------------------- END ------------------ */
@@ -133,19 +138,20 @@ int main(int argc, char *argv[]) {
         newState.cycles += 1;
 
         /* ---------------------- IF stage --------------------- */
-
-
+        if(newState.pc > 0){
+            newState.IFID.instr = state.instrMem[state.pc];
+        }
         /* ---------------------- ID stage --------------------- */
-
+        newState.IDEX.instr = state.IFID.instr;
 
         /* ---------------------- EX stage --------------------- */
-
+        newState.EXMEM.instr = state.IDEX.instr;
 
         /* --------------------- MEM stage --------------------- */
-
+        newState.MEMWB.instr = state.EXMEM.instr;
 
         /* ---------------------- WB stage --------------------- */
-
+        newState.WBEND.instr = state.MEMWB.instr;
 
         /* ------------------------ END ------------------------ */
         state = newState; /* this is the last statement before end of the loop. It marks the end
