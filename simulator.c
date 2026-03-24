@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
         newState.IFID.pcPlus1 = state.pc + 1;
         /* ---------------------- ID stage --------------------- */
         newState.IDEX.instr = state.IFID.instr;
-        newState.IDEX.pcPlus1 = state.pc + 1;
+        newState.IDEX.pcPlus1 = state.IFID.pcPlus1;
 
         newState.IDEX.valA = state.reg[field0(state.IFID.instr)]; //grabs regA
         newState.IDEX.valB = state.reg[field1(state.IFID.instr)]; //grabs regB
@@ -152,30 +152,47 @@ int main(int argc, char *argv[]) {
         newState.EXMEM.instr = state.IDEX.instr;
 
         newState.EXMEM.branchTarget = convertNum(field2(state.EXMEM.instr));
-        if( newState.EXMEM.instr == "beq"){
+        if(opcode(state.IDEX.instr) == BEQ){
             newState.EXMEM.eq = (state.IDEX.valA == state.IDEX.valB);
         }
 
-        if(opcode(newState.EXMEM.instr) == ADD){ //for add command
+        if(opcode(state.IDEX.instr) == ADD){ //for add command
             newState.EXMEM.aluResult = state.IDEX.valA + state.IDEX.valB;
         }
 
-        if(opcode(newState.EXMEM.instr) == LW || opcode(newState.EXMEM.instr) == SW){ //for loads and stores
+        if(opcode(state.IDEX.instr) == NOR){ //for nor command
+            newState.EXMEM.aluResult = ~(state.IDEX.valA | state.IDEX.valB);
+        }
+
+        if(opcode(state.IDEX.instr) == LW || opcode(state.IDEX.instr) == SW){ //for loads and stores
             newState.EXMEM.aluResult = state.IDEX.valA + state.IDEX.offset;
         }
+
+        newState.EXMEM.valB = state.IDEX.valB;
         /* --------------------- MEM stage --------------------- */
         newState.MEMWB.instr = state.EXMEM.instr;
 
-        if(opcode(newState.MEMWB.instr) == SW){
-            newState.MEMWB.writeData = state.reg[field0(state.MEMWB.instr)];
+        if(opcode(state.EXMEM.instr) == SW){
+            newState.dataMem[state.EXMEM.aluResult] = state.EXMEM.valB;
         }
-       
+
+        if(opcode(state.EXMEM.instr) == LW){
+            newState.MEMWB.writeData = state.dataMem[state.EXMEM.aluResult];
+        }
+
+        if(opcode(state.EXMEM.instr) == ADD || opcode(state.EXMEM.instr) == NOR){
+            newState.MEMWB.writeData = state.EXMEM.aluResult;
+        }
 
         /* ---------------------- WB stage --------------------- */
         newState.WBEND.instr = state.MEMWB.instr;
 
-        if(opcode(newState.MEMWB.instr) == ADD || opcode(newState.MEMWB.instr) == LW || opcode(newState.MEMWB.instr) == NOR){
-            newState.reg[field2(newState.WBEND.instr)] = state.MEMWB.writeData;
+        if(opcode(state.MEMWB.instr) == ADD || opcode(state.MEMWB.instr) == NOR){
+            newState.reg[field2(state.MEMWB.instr)] = state.MEMWB.writeData;
+        }
+
+        if(opcode(state.MEMWB.instr) == LW){
+            newState.reg[field1(state.MEMWB.instr)] = state.MEMWB.writeData;
         }
 
         /* ------------------------ END ------------------------ */
