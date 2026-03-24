@@ -151,11 +151,32 @@ int main(int argc, char *argv[]) {
         /* ---------------------- EX stage --------------------- */
         newState.EXMEM.instr = state.IDEX.instr;
 
+        newState.EXMEM.branchTarget = convertNum(field2(state.EXMEM.instr));
+        if( newState.EXMEM.instr == "beq"){
+            newState.EXMEM.eq = (state.IDEX.valA == state.IDEX.valB);
+        }
+
+        if(opcode(newState.EXMEM.instr) == ADD){ //for add command
+            newState.EXMEM.aluResult = state.IDEX.valA + state.IDEX.valB;
+        }
+
+        if(opcode(newState.EXMEM.instr) == LW || opcode(newState.EXMEM.instr) == SW){ //for loads and stores
+            newState.EXMEM.aluResult = state.IDEX.valA + state.IDEX.offset;
+        }
         /* --------------------- MEM stage --------------------- */
         newState.MEMWB.instr = state.EXMEM.instr;
 
+        if(opcode(newState.MEMWB.instr) == SW){
+            newState.MEMWB.writeData = state.reg[field0(state.MEMWB.instr)];
+        }
+       
+
         /* ---------------------- WB stage --------------------- */
         newState.WBEND.instr = state.MEMWB.instr;
+
+        if(opcode(newState.MEMWB.instr) == ADD || opcode(newState.MEMWB.instr) == LW || opcode(newState.MEMWB.instr) == NOR){
+            newState.reg[field2(newState.WBEND.instr)] = state.MEMWB.writeData;
+        }
 
         /* ------------------------ END ------------------------ */
         ++newState.pc;
