@@ -138,11 +138,15 @@ int main(int argc, char *argv[]) {
         newState.cycles += 1;
 
         /* ---------------------- IF stage --------------------- */
-        if(newState.pc > 0){
-            newState.IFID.instr = state.instrMem[state.pc];
-        }
+        newState.IFID.instr = state.instrMem[state.pc];
+        newState.IFID.pcPlus1 = state.pc + 1;
         /* ---------------------- ID stage --------------------- */
         newState.IDEX.instr = state.IFID.instr;
+        newState.IDEX.pcPlus1 = state.pc + 1;
+
+        newState.IDEX.valA = state.reg[field0(state.IFID.instr)]; //grabs regA
+        newState.IDEX.valB = state.reg[field1(state.IFID.instr)]; //grabs regB
+        newState.IDEX.offset = convertNum(field2(state.IFID.instr)); //grabs offset
 
         /* ---------------------- EX stage --------------------- */
         newState.EXMEM.instr = state.IDEX.instr;
@@ -154,6 +158,7 @@ int main(int argc, char *argv[]) {
         newState.WBEND.instr = state.MEMWB.instr;
 
         /* ------------------------ END ------------------------ */
+        ++newState.pc;
         state = newState; /* this is the last statement before end of the loop. It marks the end
         of the cycle and updates the current state with the values calculated in this cycle */
     }
