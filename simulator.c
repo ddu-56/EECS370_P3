@@ -147,6 +147,7 @@ int main(int argc, char *argv[]) {
         //prev
         int prevInstruction = opcode(state.IDEX.instr);
         int prevInstructionDest = field1(state.IDEX.instr); //which register it is reading into
+        int prevInstructionDest2 = field2(state.IDEX.instr); //which register it is reading into ADD NOR
 
         //next
         int reg1 = field0(state.IFID.instr);
@@ -193,11 +194,24 @@ int main(int argc, char *argv[]) {
         }
 
         /* ---------------------- EX stage --------------------- */
-        //detect if we want to pull the command from the ID stage
-        
         newState.EXMEM.instr = state.IDEX.instr;
 
-        int branchTarget = state.pc + 1 + convertNum(field2(state.IDEX.instr));
+        //detect if we want to pull the command from the ID stage
+        int prev0InstructionInEX = opcode(state.EXMEM.instr);
+        int prev1InstructionInEX = state.MEMWB.instr;
+        int prev2InstructionInEX = state.WBEND.instr;
+
+        if(prev0InstructionInEX == ADD || prev0InstructionInEX == NOR || prev0InstructionInEX == SW){
+            //check the EXMEM reg values and see if they align
+        }
+        else if(){
+            //check if the MEMWB reg values and see if they align
+        }
+        else if(){
+            //check if the WBEND reg values and see if they align
+        }
+        
+        int branchTarget = state.IDEX.pcPlus1 + state.IDEX.offset;
 
         newState.EXMEM.branchTarget = branchTarget;
 
@@ -208,7 +222,7 @@ int main(int argc, char *argv[]) {
             newState.EXMEM.eq = 0;
         }
 
-        
+
 
         if(opcode(state.IDEX.instr) == ADD){ //for add command
             newState.EXMEM.aluResult = state.IDEX.valA + state.IDEX.valB;
@@ -226,7 +240,7 @@ int main(int argc, char *argv[]) {
         /* --------------------- MEM stage --------------------- */
         newState.MEMWB.instr = state.EXMEM.instr;
 
-        if(state.EXMEM.eq == 1){
+        if(state.EXMEM.eq == 1 && state.EXMEM.instr == BEQ){
             newState.pc = state.EXMEM.branchTarget;
 
             //reset everything
@@ -265,12 +279,14 @@ int main(int argc, char *argv[]) {
 
         newState.WBEND.writeData = writeBackData;
 
-        if(field1(state.MEMWB.instr) != 0 && field2(state.MEMWB.instr) != 0){ //dont allow writing to reg 0
-            if(opcode(state.MEMWB.instr) == ADD || opcode(state.MEMWB.instr) == NOR){
+        if(opcode(state.MEMWB.instr) == ADD || opcode(state.MEMWB.instr) == NOR){
+            if(field2(state.MEMWB.instr) != 0){
                 newState.reg[field2(state.MEMWB.instr)] = state.MEMWB.writeData;
             }
+        }
 
-            if(opcode(state.MEMWB.instr) == LW){
+        if(opcode(state.MEMWB.instr) == LW){
+            if(field1(state.MEMWB.instr) != 0){
                 newState.reg[field1(state.MEMWB.instr)] = state.MEMWB.writeData;
             }
         }
