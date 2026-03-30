@@ -141,14 +141,47 @@ int main(int argc, char *argv[]) {
         newState.IFID.instr = state.instrMem[state.pc];
         newState.IFID.pcPlus1 = state.pc + 1;
         /* ---------------------- ID stage --------------------- */
-        newState.IDEX.instr = state.IFID.instr;
-        newState.IDEX.pcPlus1 = state.IFID.pcPlus1;
+        //hazard things
+        //prev
+        int prevInstruction = opcode(state.IDEX.instr);
+        int prevInstructionDest = state.IDEX.offset;
 
-        newState.IDEX.valA = state.reg[field0(state.IFID.instr)]; //grabs regA
-        newState.IDEX.valB = state.reg[field1(state.IFID.instr)]; //grabs regB
-        newState.IDEX.offset = convertNum(field2(state.IFID.instr)); //grabs offset
+        //next
+        int reg1 = field0(state.IFID.instr);
+        int reg2 = field1(state.IFID.instr);
+        int currInstruction = opcode(state.IFID.instr);
+
+        int stall = 0;
+
+        if(prevInstruction == LW){
+            if(reg1 == prevInstructionDest || reg2 == prevInstructionDest){
+                stall = 1;
+            }
+        }
+
+        if(stall == 1){
+            //insert noops
+            newState.IDEX.instr = NOOP;
+
+            newState.IDEX.pcPlus1 = 0;
+
+            newState.IDEX.valA = 0; //grabs regA
+            newState.IDEX.valB = 0; //grabs regB
+            newState.IDEX.offset = 0; //grabs offset
+        }
+        else{
+            newState.IDEX.instr = currInstruction;
+
+            newState.IDEX.pcPlus1 = state.IFID.pcPlus1;
+
+            newState.IDEX.valA = state.reg[field0(state.IFID.instr)]; //grabs regA
+            newState.IDEX.valB = state.reg[field1(state.IFID.instr)]; //grabs regB
+            newState.IDEX.offset = convertNum(field2(state.IFID.instr)); //grabs offset
+        }
 
         /* ---------------------- EX stage --------------------- */
+        //detect if we want to pull the command from the ID stage
+        
         newState.EXMEM.instr = state.IDEX.instr;
 
         newState.EXMEM.branchTarget = convertNum(field2(state.EXMEM.instr));
@@ -186,6 +219,8 @@ int main(int argc, char *argv[]) {
 
         /* ---------------------- WB stage --------------------- */
         newState.WBEND.instr = state.MEMWB.instr;
+
+        newState.WBEND.writeData = state.MEMWB.writeData;
 
         if(opcode(state.MEMWB.instr) == ADD || opcode(state.MEMWB.instr) == NOR){
             newState.reg[field2(state.MEMWB.instr)] = state.MEMWB.writeData;
