@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
         //hazard things
         //prev
         int prevInstruction = opcode(state.IDEX.instr);
-        int prevInstructionDest = state.reg[field0(state.IFID.instr)] + convertNUm(state.IDEX.offset);
+        int prevInstructionDest = field1(state.IDEX.instr); //which register it is reading into
 
         //next
         int reg1 = field0(state.IFID.instr);
@@ -156,8 +156,15 @@ int main(int argc, char *argv[]) {
         int stall = 0;
 
         if(prevInstruction == LW){
-            if(reg1 == prevInstructionDest || reg2 == prevInstructionDest){
-                stall = 1;
+            if(currInstruction != HALT && currInstruction != NOOP){
+                if(reg1 == prevInstructionDest){
+                    stall = 1;
+                }
+            }
+            if(currInstruction == ADD || currInstruction == SW || currInstruction == NOR || currInstruction == BEQ){
+                if(reg2 == prevInstructionDest){
+                    stall = 1;
+                }
             }
         }
 
@@ -169,14 +176,14 @@ int main(int argc, char *argv[]) {
             newState.pc = state.pc;
 
             //keep same instruction
-            newState.IFID.instr = state.IFID.instr;
+            newState.IFID = state.IFID;
 
             newState.IDEX.valA = 0; //grabs regA
             newState.IDEX.valB = 0; //grabs regB
             newState.IDEX.offset = 0; //grabs offset
         }
         else{
-            newState.IDEX.instr = currInstruction;
+            newState.IDEX.instr = state.IFID.instr;
 
             newState.IDEX.pcPlus1 = state.IFID.pcPlus1;
 
@@ -200,6 +207,8 @@ int main(int argc, char *argv[]) {
         } else{
             newState.EXMEM.eq = 0;
         }
+
+        
 
         if(opcode(state.IDEX.instr) == ADD){ //for add command
             newState.EXMEM.aluResult = state.IDEX.valA + state.IDEX.valB;
@@ -252,14 +261,18 @@ int main(int argc, char *argv[]) {
         /* ---------------------- WB stage --------------------- */
         newState.WBEND.instr = state.MEMWB.instr;
 
-        newState.WBEND.writeData = state.MEMWB.writeData;
+        int writeBackData = state.MEMWB.writeData;
 
-        if(opcode(state.MEMWB.instr) == ADD || opcode(state.MEMWB.instr) == NOR){
-            newState.reg[field2(state.MEMWB.instr)] = state.MEMWB.writeData;
-        }
+        newState.WBEND.writeData = writeBackData;
 
-        if(opcode(state.MEMWB.instr) == LW){
-            newState.reg[field1(state.MEMWB.instr)] = state.MEMWB.writeData;
+        if(field1(state.MEMWB.instr) != 0 && field2(state.MEMWB.instr) != 0){ //dont allow writing to reg 0
+            if(opcode(state.MEMWB.instr) == ADD || opcode(state.MEMWB.instr) == NOR){
+                newState.reg[field2(state.MEMWB.instr)] = state.MEMWB.writeData;
+            }
+
+            if(opcode(state.MEMWB.instr) == LW){
+                newState.reg[field1(state.MEMWB.instr)] = state.MEMWB.writeData;
+            }
         }
 
         /* ------------------------ END ------------------------ */
