@@ -140,11 +140,13 @@ int main(int argc, char *argv[]) {
         /* ---------------------- IF stage --------------------- */
         newState.IFID.instr = state.instrMem[state.pc];
         newState.IFID.pcPlus1 = state.pc + 1;
+
+        newState.pc = state.pc + 1; //incerment next
         /* ---------------------- ID stage --------------------- */
         //hazard things
         //prev
         int prevInstruction = opcode(state.IDEX.instr);
-        int prevInstructionDest = state.IDEX.offset;
+        int prevInstructionDest = state.reg[field0(state.IFID.instr)] + convertNUm(state.IDEX.offset);
 
         //next
         int reg1 = field0(state.IFID.instr);
@@ -161,9 +163,13 @@ int main(int argc, char *argv[]) {
 
         if(stall == 1){
             //insert noops
-            newState.IDEX.instr = NOOP;
+            newState.IDEX.instr = NOOPINSTR;
 
-            newState.IDEX.pcPlus1 = 0;
+            //cancels out our increment
+            newState.pc = state.pc;
+
+            //keep same instruction
+            newState.IFID.instr = state.IFID.instr;
 
             newState.IDEX.valA = 0; //grabs regA
             newState.IDEX.valB = 0; //grabs regB
@@ -184,9 +190,15 @@ int main(int argc, char *argv[]) {
         
         newState.EXMEM.instr = state.IDEX.instr;
 
-        newState.EXMEM.branchTarget = convertNum(field2(state.EXMEM.instr));
+        int branchTarget = state.pc + 1 + convertNum(field2(state.IDEX.instr));
+
+        newState.EXMEM.branchTarget = branchTarget;
+
         if(opcode(state.IDEX.instr) == BEQ){
-            newState.EXMEM.eq = (state.IDEX.valA == state.IDEX.valB);
+            int regEQ = (state.IDEX.valA == state.IDEX.valB);
+            newState.EXMEM.eq = regEQ;
+        } else{
+            newState.EXMEM.eq = 0;
         }
 
         if(opcode(state.IDEX.instr) == ADD){ //for add command
@@ -204,6 +216,26 @@ int main(int argc, char *argv[]) {
         newState.EXMEM.valB = state.IDEX.valB;
         /* --------------------- MEM stage --------------------- */
         newState.MEMWB.instr = state.EXMEM.instr;
+
+        if(state.EXMEM.eq == 1){
+            newState.pc = state.EXMEM.branchTarget;
+
+            //reset everything
+            newState.IFID.instr = NOOPINSTR;
+            newState.IFID.pcPlus1 = 0;
+
+            newState.IDEX.instr = NOOPINSTR;
+            newState.IDEX.offset = 0;
+            newState.IDEX.pcPlus1 = 0;
+            newState.IDEX.valA = 0;
+            newState.IDEX.valB = 0;
+
+            newState.EXMEM.instr = NOOPINSTR;
+            newState.EXMEM.aluResult = 0;
+            newState.EXMEM.branchTarget = 0;
+            newState.EXMEM.eq = 0;
+            newState.EXMEM.valB = 0;
+        }
 
         if(opcode(state.EXMEM.instr) == SW){
             newState.dataMem[state.EXMEM.aluResult] = state.EXMEM.valB;
@@ -231,7 +263,6 @@ int main(int argc, char *argv[]) {
         }
 
         /* ------------------------ END ------------------------ */
-        ++newState.pc;
         state = newState; /* this is the last statement before end of the loop. It marks the end
         of the cycle and updates the current state with the values calculated in this cycle */
     }
