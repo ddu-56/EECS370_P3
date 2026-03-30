@@ -147,7 +147,6 @@ int main(int argc, char *argv[]) {
         //prev
         int prevInstruction = opcode(state.IDEX.instr);
         int prevInstructionDest = field1(state.IDEX.instr); //which register it is reading into
-        int prevInstructionDest2 = field2(state.IDEX.instr); //which register it is reading into ADD NOR
 
         //next
         int reg1 = field0(state.IFID.instr);
@@ -197,7 +196,7 @@ int main(int argc, char *argv[]) {
         newState.EXMEM.instr = state.IDEX.instr;
 
         //detect if we want to pull the command from the ID stage
-        int currInstruction = opcode(state.IDEX.instr);
+        currInstruction = opcode(state.IDEX.instr);
 
         int sourceA = field0(state.IDEX.instr);
         int sourceB = field1(state.IDEX.instr);
@@ -209,72 +208,65 @@ int main(int argc, char *argv[]) {
             //fix reg A
             int prev0InstructionInEX = opcode(state.EXMEM.instr);
 
-            if(prev0InstructionInEX == ADD || prev0InstructionInEX == NOR){ //EXMEM
-                if(field2(state.EXMEM.instr) == sourceA && sourceA != 0){
+            if((prev0InstructionInEX == ADD || prev0InstructionInEX == NOR) && 
+                (field2(state.EXMEM.instr) == sourceA && sourceA != 0)){ //EXMEM
                     forwardedA = state.EXMEM.aluResult;
-                }
             }
             else{ //MEMWB
                 int prev1InstructionInEX = opcode(state.MEMWB.instr);
 
-                if(prev1InstructionInEX == ADD || prev1InstructionInEX == NOR){
-                    if(field2(state.MEMWB.instr) == sourceA && sourceA != 0){
+                if((prev1InstructionInEX == ADD || prev1InstructionInEX == NOR) && 
+                    (field2(state.MEMWB.instr) == sourceA && sourceA != 0)){
                         forwardedA = state.MEMWB.writeData;
-                    }
                 }
-                else if(prev1InstructionInEX == LW){
-                    if(field1(state.MEMWB.instr) == sourceA && sourceA != 0){
-                        forwardedA = state.MEMWB.writeData;
-                    }
+                else if(prev1InstructionInEX == LW && 
+                        (field1(state.MEMWB.instr) == sourceA && sourceA != 0)){
+                            forwardedA = state.MEMWB.writeData;
                 }
                 else{ //WBEND
                     int prev2InstructionInEX = opcode(state.WBEND.instr);
 
-                    if(prev2InstructionInEX == ADD || prev2InstructionInEX == NOR){
-                        if(field2(state.WBEND.instr) == sourceA && sourceA != 0){
+                    if((prev2InstructionInEX == ADD || prev2InstructionInEX == NOR) && 
+                        (field2(state.WBEND.instr) == sourceA && sourceA != 0)){
                             forwardedA = state.WBEND.writeData;
-                        }
                     }
                     else if(prev2InstructionInEX == LW){
-                        if(field1(state.MEMWB.instr) == sourceA && sourceA != 0){
+                        if(field1(state.WBEND.instr) == sourceA && sourceA != 0){
                             forwardedA = state.WBEND.writeData;
                         }
                     }
                 }
             }
         }
-        if(currInstruction == ADD && currInstruction == NOR && currInstruction == BEQ && currInstruction == SW){
+
+        if(currInstruction == ADD || currInstruction == NOR || currInstruction == BEQ || currInstruction == SW){
             //fix reg B
             int prev0InstructionInEX = opcode(state.EXMEM.instr);
 
-            if(prev0InstructionInEX == ADD || prev0InstructionInEX == NOR){ //EXMEM
-                if(field2(state.EXMEM.instr) == sourceB && sourceB != 0){
+            if((prev0InstructionInEX == ADD || prev0InstructionInEX == NOR) && 
+                (field2(state.EXMEM.instr) == sourceB && sourceB != 0)){ //EXMEM
                     forwardedB = state.EXMEM.aluResult;
-                }
             }
             else{ //MEMWB
                 int prev1InstructionInEX = opcode(state.MEMWB.instr);
 
-                if(prev1InstructionInEX == ADD || prev1InstructionInEX == NOR){
-                    if(field2(state.MEMWB.instr) == sourceB && sourceB != 0){
+                if((prev1InstructionInEX == ADD || prev1InstructionInEX == NOR) && 
+                    (field2(state.MEMWB.instr) == sourceB && sourceB != 0)){
                         forwardedB = state.MEMWB.writeData;
-                    }
                 }
-                else if(prev1InstructionInEX == LW){
-                    if(field1(state.MEMWB.instr) == sourceB && sourceB != 0){
-                        forwardedB = state.MEMWB.writeData;
-                    }
+                else if(prev1InstructionInEX == LW && 
+                        (field1(state.MEMWB.instr) == sourceB && sourceB != 0)){
+                            forwardedB = state.MEMWB.writeData;
                 }
                 else{ //WBEND
                     int prev2InstructionInEX = opcode(state.WBEND.instr);
 
-                    if(prev2InstructionInEX == ADD || prev2InstructionInEX == NOR){
-                        if(field2(state.WBEND.instr) == sourceB && sourceB != 0){
+                    if((prev2InstructionInEX == ADD || prev2InstructionInEX == NOR) && 
+                        (field2(state.WBEND.instr) == sourceB && sourceB != 0)){
                             forwardedB = state.WBEND.writeData;
-                        }
                     }
                     else if(prev2InstructionInEX == LW){
-                        if(field1(state.MEMWB.instr) == sourceB && sourceB != 0){
+                        if(field1(state.WBEND.instr) == sourceB && sourceB != 0){
                             forwardedB = state.WBEND.writeData;
                         }
                     }
@@ -288,7 +280,7 @@ int main(int argc, char *argv[]) {
         newState.EXMEM.branchTarget = branchTarget;
 
         if(opcode(state.IDEX.instr) == BEQ){
-            int regEQ = (state.IDEX.valA == state.IDEX.valB);
+            int regEQ = (forwardedA == forwardedB);
             newState.EXMEM.eq = regEQ;
         } else{
             newState.EXMEM.eq = 0;
@@ -306,11 +298,11 @@ int main(int argc, char *argv[]) {
             newState.EXMEM.aluResult = forwardedA + state.IDEX.offset;
         }
 
-        newState.EXMEM.valB = state.IDEX.valB;
+        newState.EXMEM.valB = forwardedB;
         /* --------------------- MEM stage --------------------- */
         newState.MEMWB.instr = state.EXMEM.instr;
 
-        if(state.EXMEM.eq == 1 && state.EXMEM.instr == BEQ){
+        if(state.EXMEM.eq == 1 && opcode(state.EXMEM.instr) == BEQ){
             newState.pc = state.EXMEM.branchTarget;
 
             //reset everything
