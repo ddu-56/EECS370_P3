@@ -197,22 +197,94 @@ int main(int argc, char *argv[]) {
         newState.EXMEM.instr = state.IDEX.instr;
 
         //detect if we want to pull the command from the ID stage
-        int prev0InstructionInEX = opcode(state.EXMEM.instr);
-        int prev1InstructionInEX = state.MEMWB.instr;
-        int prev2InstructionInEX = state.WBEND.instr;
+        int currInstruction = opcode(state.IDEX.instr);
 
-        if(prev0InstructionInEX == ADD || prev0InstructionInEX == NOR || prev0InstructionInEX == SW){
-            //check the EXMEM reg values and see if they align
+        int sourceA = field0(state.IDEX.instr);
+        int sourceB = field1(state.IDEX.instr);
+
+        int forwardedA = state.IDEX.valA;
+        int forwardedB = state.IDEX.valB;
+
+        if(currInstruction != NOOP && currInstruction != HALT){
+            //fix reg A
+            int prev0InstructionInEX = opcode(state.EXMEM.instr);
+
+            if(prev0InstructionInEX == ADD || prev0InstructionInEX == NOR){ //EXMEM
+                if(field2(state.EXMEM.instr) == sourceA && sourceA != 0){
+                    forwardedA = state.EXMEM.aluResult;
+                }
+            }
+            else{ //MEMWB
+                int prev1InstructionInEX = opcode(state.MEMWB.instr);
+
+                if(prev1InstructionInEX == ADD || prev1InstructionInEX == NOR){
+                    if(field2(state.MEMWB.instr) == sourceA && sourceA != 0){
+                        forwardedA = state.MEMWB.writeData;
+                    }
+                }
+                else if(prev1InstructionInEX == LW){
+                    if(field1(state.MEMWB.instr) == sourceA && sourceA != 0){
+                        forwardedA = state.MEMWB.writeData;
+                    }
+                }
+                else{ //WBEND
+                    int prev2InstructionInEX = opcode(state.WBEND.instr);
+
+                    if(prev2InstructionInEX == ADD || prev2InstructionInEX == NOR){
+                        if(field2(state.WBEND.instr) == sourceA && sourceA != 0){
+                            forwardedA = state.WBEND.writeData;
+                        }
+                    }
+                    else if(prev2InstructionInEX == LW){
+                        if(field1(state.MEMWB.instr) == sourceA && sourceA != 0){
+                            forwardedA = state.WBEND.writeData;
+                        }
+                    }
+                }
+            }
         }
-        else if(){
-            //check if the MEMWB reg values and see if they align
+        if(currInstruction == ADD && currInstruction == NOR && currInstruction == BEQ && currInstruction == SW){
+            //fix reg B
+            int prev0InstructionInEX = opcode(state.EXMEM.instr);
+
+            if(prev0InstructionInEX == ADD || prev0InstructionInEX == NOR){ //EXMEM
+                if(field2(state.EXMEM.instr) == sourceB && sourceB != 0){
+                    forwardedB = state.EXMEM.aluResult;
+                }
+            }
+            else{ //MEMWB
+                int prev1InstructionInEX = opcode(state.MEMWB.instr);
+
+                if(prev1InstructionInEX == ADD || prev1InstructionInEX == NOR){
+                    if(field2(state.MEMWB.instr) == sourceB && sourceB != 0){
+                        forwardedB = state.MEMWB.writeData;
+                    }
+                }
+                else if(prev1InstructionInEX == LW){
+                    if(field1(state.MEMWB.instr) == sourceB && sourceB != 0){
+                        forwardedB = state.MEMWB.writeData;
+                    }
+                }
+                else{ //WBEND
+                    int prev2InstructionInEX = opcode(state.WBEND.instr);
+
+                    if(prev2InstructionInEX == ADD || prev2InstructionInEX == NOR){
+                        if(field2(state.WBEND.instr) == sourceB && sourceB != 0){
+                            forwardedB = state.WBEND.writeData;
+                        }
+                    }
+                    else if(prev2InstructionInEX == LW){
+                        if(field1(state.MEMWB.instr) == sourceB && sourceB != 0){
+                            forwardedB = state.WBEND.writeData;
+                        }
+                    }
+                }
+            }
         }
-        else if(){
-            //check if the WBEND reg values and see if they align
-        }
+
+        //default stuff
         
         int branchTarget = state.IDEX.pcPlus1 + state.IDEX.offset;
-
         newState.EXMEM.branchTarget = branchTarget;
 
         if(opcode(state.IDEX.instr) == BEQ){
@@ -222,18 +294,16 @@ int main(int argc, char *argv[]) {
             newState.EXMEM.eq = 0;
         }
 
-
-
         if(opcode(state.IDEX.instr) == ADD){ //for add command
-            newState.EXMEM.aluResult = state.IDEX.valA + state.IDEX.valB;
+            newState.EXMEM.aluResult = forwardedA + forwardedB;
         }
 
         if(opcode(state.IDEX.instr) == NOR){ //for nor command
-            newState.EXMEM.aluResult = ~(state.IDEX.valA | state.IDEX.valB);
+            newState.EXMEM.aluResult = ~(forwardedA | forwardedB);
         }
 
         if(opcode(state.IDEX.instr) == LW || opcode(state.IDEX.instr) == SW){ //for loads and stores
-            newState.EXMEM.aluResult = state.IDEX.valA + state.IDEX.offset;
+            newState.EXMEM.aluResult = forwardedA + state.IDEX.offset;
         }
 
         newState.EXMEM.valB = state.IDEX.valB;
